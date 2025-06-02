@@ -1,45 +1,42 @@
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, callback
 import pandas as pd
 import plotly.express as px
-import flask
+import urllib.parse
 
-# Пользователи
 USERS = {
     'aizhan': {'name': 'Айжан', 'role': 'employee'},
     'natasha': {'name': 'Наташа', 'role': 'employee'},
-    'admin': {'name': 'admin', 'role': 'superuser'},
+    'ruslan': {'name': 'Руслан', 'role': 'superuser'},
 }
 
-# Загрузка Excel
 df = pd.read_excel('df.xlsx')
-# print(df)
-# Dash app
+
 app = dash.Dash(__name__)
 server = app.server
 
 app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),  # добавляем для получения URL
     html.H2(id='user-display', style={'textAlign': 'center'}),
     html.Div(
         dcc.Graph(id='revenue-chart'),
-        style={
-            'width': '80%',        # ширина графика
-            'maxWidth': '900px',   # максимальная ширина
-            'margin': '0 auto'     # центрирование
-        }
+        style={'width': '80%', 'maxWidth': '900px', 'margin': '0 auto'}
     )
 ])
-
-def get_user():
-    return flask.request.args.get('user', 'aizhan')
 
 @app.callback(
     Output('user-display', 'children'),
     Output('revenue-chart', 'figure'),
-    Input('revenue-chart', 'id')  # просто триггерим при загрузке
+    Input('url', 'search')  # параметр query string из URL
 )
-def update_output(_):
-    user_key = get_user()
+def update_output(search):
+    # search будет строкой вида "?user=natasha" или None
+    if search:
+        query_params = urllib.parse.parse_qs(search.lstrip('?'))
+        user_key = query_params.get('user', ['aizhan'])[0]
+    else:
+        user_key = 'aizhan'
+
     user_info = USERS.get(user_key, USERS['aizhan'])
     username = user_info['name']
     role = user_info['role']
@@ -62,4 +59,4 @@ def update_output(_):
     return f"Вы вошли как: {username}", fig
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    app.run(debug=True)
